@@ -199,6 +199,7 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
+ifeq ($(strip $(QCOM_APM_ENABLED)),true)
 LOCAL_CFLAGS := -D_POSIX_SOURCE
 LOCAL_CFLAGS += $(common_cflags)
 
@@ -233,5 +234,6 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES += hardware/libhardware_legacy/audio
 
 include $(BUILD_SHARED_LIBRARY)
+endif
 
 endif
