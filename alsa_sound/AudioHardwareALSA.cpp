@@ -1713,7 +1713,7 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
         else
             alsa_handle.format = *format;
         alsa_handle.channels = VOICE_CHANNEL_MODE;
-        alsa_handle.sampleRate = android::AudioRecord::DEFAULT_SAMPLE_RATE;
+        alsa_handle.sampleRate = 48000;//android::AudioRecord::DEFAULT_SAMPLE_RATE;
         alsa_handle.latency = RECORD_LATENCY;
         alsa_handle.rxHandle = 0;
         alsa_handle.ucMgr = mUcMgr;
