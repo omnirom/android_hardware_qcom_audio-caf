@@ -812,7 +812,7 @@ This happens when the modifier changes*/
                           SND_USE_CASE_VERB_IP_VOICECALL,
                           strlen(SND_USE_CASE_VERB_IP_VOICECALL)) ||
                           (!strncmp(current_mod, SND_USE_CASE_MOD_PLAY_VOIP,
-                           strlen(SND_USE_CASE_MOD_PLAY_VOIP)))) || <<<<<<< HEAD
+                           strlen(SND_USE_CASE_MOD_PLAY_VOIP)))) ||
                           (!uc_mgr->isFusion3Platform)) {
                         if (uc_mgr->acdb_handle) {
                             acdb_send_voice_cal = dlsym(uc_mgr->acdb_handle,"acdb_loader_send_voice_cal");
