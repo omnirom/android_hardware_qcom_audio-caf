@@ -27,7 +27,6 @@
 
 #define LOG_TAG "AudioStreamOutALSA"
 //#define LOG_NDEBUG 0
-#define LOG_NDDEBUG 0
 #include <utils/Log.h>
 #include <utils/String8.h>
 
@@ -52,9 +51,9 @@ static const int DEFAULT_SAMPLE_RATE = ALSA_DEFAULT_SAMPLE_RATE;
 
 AudioStreamOutALSA::AudioStreamOutALSA(AudioHardwareALSA *parent, alsa_handle_t *handle) :
     ALSAStreamOps(parent, handle),
-    mParent(parent),
     mFrameCount(0),
-    mUseCase(AudioHardwareALSA::USECASE_NONE)
+    mUseCase(AudioHardwareALSA::USECASE_NONE),
+    mParent(parent)
 {
 }
 
@@ -266,7 +265,7 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
         if (n < 0) {
             mParent->mLock.lock();
             if (mHandle->handle != NULL) {
-                ALOGE("pcm_write returned error %d, trying to recover\n", n);
+                ALOGE("pcm_write returned error %ld, trying to recover\n", n);
                 pcm_close(mHandle->handle);
                 mHandle->handle = NULL;
                 if((!strncmp(mHandle->useCase, SND_USE_CASE_VERB_IP_VOICECALL, strlen(SND_USE_CASE_VERB_IP_VOICECALL))) ||
@@ -277,10 +276,10 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
                 }
                 else
                 {
-                    if (mParent->mALSADevice->mSSRComplete) {
+                    if (mParent->mALSADevice->mADSPState == ADSP_UP_AFTER_SSR) {
                         ALOGD("SSR Case: Call device switch to apply AMIX controls.");
                         mHandle->module->route(mHandle, mParent->mCurRxDevice , mParent->mode());
-                        mParent->mALSADevice->mSSRComplete = false;
+                        mParent->mALSADevice->mADSPState = ADSP_UP;
 
                         if(mParent->isExtOutDevice(mParent->mCurRxDevice)) {
                            ALOGV("StreamOut write - mRouteAudioToExtOut = %d ", mParent->mRouteAudioToExtOut);

@@ -26,8 +26,7 @@
 #include <math.h>
 
 #define LOG_TAG "AudioHardwareALSA"
-#define LOG_NDEBUG 0
-#define LOG_NDDEBUG 0
+//#define LOG_NDEBUG 0
 #include <utils/Log.h>
 #include <utils/String8.h>
 #include <sys/prctl.h>
@@ -69,10 +68,15 @@ extern "C"
 #ifdef QCOM_CSDCLIENT_ENABLED
     static int (*csd_client_init)();
     static int (*csd_client_deinit)();
+#ifdef NEW_CSDCLIENT
     static int (*csd_start_playback)(uint32_t);
     static int (*csd_stop_playback)(uint32_t);
     static int (*csd_standby_voice)(uint32_t);
     static int (*csd_resume_voice)(uint32_t);
+#else
+    static int (*csd_start_playback)();
+    static int (*csd_stop_playback)();
+#endif
 #endif
 }         // extern "C"
 
@@ -94,11 +98,11 @@ AudioHardwareInterface *AudioHardwareALSA::create() {
 
 AudioHardwareALSA::AudioHardwareALSA() :
     mALSADevice(0),mVoipInStreamCount(0),mVoipOutStreamCount(0),mVoipMicMute(false),
-    mVoipBitRate(0),mCallState(0),mAcdbHandle(NULL),mCsdHandle(NULL),mMicMute(0)
+    mVoipBitRate(0),mMicMute(0),mCallState(0),mAcdbHandle(NULL),mCsdHandle(NULL)
 {
     FILE *fp;
     char soundCardInfo[200];
-    char platform[128], baseband[128], audio_init[128], platformVer[128];
+    char platform[128], baseband[128], baseband_arch[128], audio_init[128], platformVer[128];
     int codec_rev = 2, verNum = 0;
 
     mDeviceList.clear();
@@ -156,7 +160,7 @@ AudioHardwareALSA::AudioHardwareALSA() :
         ALOGD("AudioHardware: DLOPEN successful for ACDBLOADER");
         acdb_init = (int (*)())::dlsym(mAcdbHandle,"acdb_loader_init_ACDB");
         if (acdb_init == NULL) {
-            ALOGE("dlsym:Error:%s Loading acdb_loader_init_ACDB");
+            ALOGE("dlsym:Error Loading acdb_loader_init_ACDB");
         }else {
            acdb_init();
            acdb_deallocate = (void (*)())::dlsym(mAcdbHandle,"acdb_loader_deallocate_ACDB");
@@ -201,6 +205,8 @@ AudioHardwareALSA::AudioHardwareALSA() :
                 break;
             } else if (strstr(soundCardInfo, "msm8974-taiko-liquid-snd-card")) {
                 codec_rev = 43;
+                break;
+            } else if (strstr(soundCardInfo, "msm8230-tapan-snd-card")) {
                 break;
             } else if(strstr(soundCardInfo, "no soundcards")) {
                 ALOGE("NO SOUND CARD DETECTED");
@@ -264,8 +270,10 @@ AudioHardwareALSA::AudioHardwareALSA() :
     } else {
         property_get("ro.board.platform", platform, "");
         property_get("ro.baseband", baseband, "");
+        property_get("ro.baseband.arch", baseband_arch, "");
         if (!strcmp("msm8960", platform) &&
-            (!strcmp("mdm", baseband) || !strcmp("sglte2", baseband))) {
+            (!strcmp("mdm", baseband) || !strcmp("sglte2", baseband) ||
+            !strcmp("mdm", baseband_arch))) {
             ALOGV("Detected Fusion tabla 2.x");
             mFusion3Platform = true;
             if((fp = fopen("/sys/devices/system/soc/soc0/platform_version","r")) == NULL) {
@@ -303,6 +311,7 @@ AudioHardwareALSA::AudioHardwareALSA() :
             csd_client_init = (int (*)())::dlsym(mCsdHandle, "csd_client_init");
             csd_client_deinit = (int (*)())::dlsym(mCsdHandle,
                                                    "csd_client_deinit");
+#ifdef NEW_CSDCLIENT
             csd_start_playback = (int (*)(uint32_t))::dlsym(mCsdHandle,
                                                    "csd_client_start_playback");
             csd_stop_playback = (int (*)(uint32_t))::dlsym(mCsdHandle,
@@ -311,6 +320,12 @@ AudioHardwareALSA::AudioHardwareALSA() :
                                                     "csd_client_standby_voice");
             csd_resume_voice = (int (*)(uint32_t))::dlsym(mCsdHandle,
                                                      "csd_client_resume_voice");
+#else
+            csd_start_playback = (int (*)())::dlsym(mCsdHandle,
+                                               "csd_client_start_playback");
+            csd_stop_playback = (int (*)())::dlsym(mCsdHandle,
+                                               "csd_client_stop_playback");
+#endif
 
             if (csd_client_init == NULL) {
                 ALOGE("csd_client_init is NULL");
@@ -330,6 +345,9 @@ AudioHardwareALSA::AudioHardwareALSA() :
     } else {
         ALOGI("ucm instance opened: %u", (unsigned)mUcMgr);
         mUcMgr->isFusion3Platform = mFusion3Platform;
+        if (mAcdbHandle) {
+            mUcMgr->acdb_handle = static_cast<void*> (mAcdbHandle);
+        }
     }
 
     //set default AudioParameters
@@ -338,7 +356,7 @@ AudioHardwareALSA::AudioHardwareALSA() :
     String8 value;
 
     //Set default AudioParameter for fluencetype
-    key  = String8(AudioParameter::keyFluenceType);
+    key  = String8(AUDIO_PARAMETER_KEY_FLUENCE_TYPE);
     property_get("ro.qc.sdk.audio.fluencetype",mFluenceKey,"0");
     if (0 == strncmp("fluencepro", mFluenceKey, sizeof("fluencepro"))) {
         mDevSettingsFlag |= QMIC_FLAG;
@@ -364,10 +382,10 @@ AudioHardwareALSA::AudioHardwareALSA() :
     property_get("ro.qc.sdk.audio.ssr",ssr_enabled,"0");
     if (!strncmp("true", ssr_enabled, 4)) {
         ALOGD("surround sound recording is supported");
-        param.add(String8(AudioParameter::keySSR), String8("true"));
+        param.add(String8(AUDIO_PARAMETER_KEY_SSR), String8("true"));
     } else {
         ALOGD("surround sound recording is not supported");
-        param.add(String8(AudioParameter::keySSR), String8("false"));
+        param.add(String8(AUDIO_PARAMETER_KEY_SSR), String8("false"));
     }
 
     mStatus = OK;
@@ -406,7 +424,7 @@ AudioHardwareALSA::~AudioHardwareALSA()
     delete mAudioUsbALSA;
 #endif
 
-#ifdef QCOM_CSDCLEINT_ENABLED
+#ifdef QCOM_CSDCLIENT_ENABLED
     if (mFusion3Platform) {
         if (mCsdHandle) {
             if (csd_client_deinit == NULL) {
@@ -514,7 +532,11 @@ status_t AudioHardwareALSA::setMode(int mode)
         if (mCallState == CS_INACTIVE)
             mCallState = CS_ACTIVE;
     }else if (mode == AUDIO_MODE_NORMAL) {
-        mCallState = 0;
+        if (mCallState != 0) {
+            // Immediate routing update on mode transition to normal
+            mCallState = 0;
+            doRouting(0);
+        }
     }
 
     return status;
@@ -532,16 +554,16 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
 
     ALOGV("setParameters() %s", keyValuePairs.string());
 
-    key = String8(AudioParameter::keyADSPStatus);
+    key = String8(AUDIO_PARAMETER_KEY_ADSP_STATUS);
     if (param.get(key, value) == NO_ERROR) {
        if (value == "ONLINE") {
            ALOGV("ADSP online set SSRcomplete");
-           mALSADevice->mSSRComplete = true;
+           mALSADevice->mADSPState = ADSP_UP_AFTER_SSR;
            return status;
        }
        else if (value == "OFFLINE") {
            ALOGV("ADSP online re-set SSRcomplete");
-           mALSADevice->mSSRComplete = false;
+           mALSADevice->mADSPState = ADSP_DOWN;
            if ( mRouteAudioToExtOut==true) {
                ALOGV("ADSP offline close EXT output");
                uint32_t activeUsecase = getExtOutActiveUseCases_l();
@@ -572,7 +594,7 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
         param.remove(key);
     }
 
-    key = String8(AudioParameter::keyFluenceType);
+    key = String8(AUDIO_PARAMETER_KEY_FLUENCE_TYPE);
     if (param.get(key, value) == NO_ERROR) {
         if (value == "quadmic") {
             //Allow changing fluence type to "quadmic" only when fluence type is fluencepro
@@ -608,14 +630,22 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
                 if (csd_start_playback == NULL) {
                     ALOGE("csd_client_start_playback is NULL");
                     } else {
+#ifdef NEW_CSDCLIENT
                         csd_start_playback(ALL_SESSION_VSID);
+#else
+                        csd_start_playback();
+#endif
                     }
             } else {
                 ALOGV("Disabling Incall Music setting in the setparameter\n");
                 if (csd_stop_playback == NULL) {
                     ALOGE("csd_client_stop_playback is NULL");
                 } else {
+#ifdef NEW_CSDCLIENT
                     csd_stop_playback(ALL_SESSION_VSID);
+#else
+                    csd_stop_playback();
+#endif
                 }
             }
             param.remove(key);
@@ -792,7 +822,7 @@ String8 AudioHardwareALSA::getParameters(const String8& keys)
         param.add(key, value);
     }
 
-    key = String8(AudioParameter::keyFluenceType);
+    key = String8(AUDIO_PARAMETER_KEY_FLUENCE_TYPE);
     if (param.get(key, value) == NO_ERROR) {
     if ((mDevSettingsFlag & QMIC_FLAG) &&
                                (mDevSettingsFlag & ~DMIC_FLAG))
@@ -827,7 +857,7 @@ String8 AudioHardwareALSA::getParameters(const String8& keys)
            param.addInt(String8("isVGS"), true);
     }
 #ifdef QCOM_SSR_ENABLED
-    key = String8(AudioParameter::keySSR);
+    key = String8(AUDIO_PARAMETER_KEY_SSR);
     if (param.get(key, value) == NO_ERROR) {
         char ssr_enabled[6] = "false";
         property_get("ro.qc.sdk.audio.ssr",ssr_enabled,"0");
@@ -852,12 +882,6 @@ String8 AudioHardwareALSA::getParameters(const String8& keys)
             value = mA2dpStream->common.get_parameters(&mA2dpStream->common,key);
         }
         param.add(key, value);
-    }
-
-    key = String8("tunneled-input-formats");
-    if ( param.get(key,value) == NO_ERROR ) {
-        ALOGD("Add tunnel AWB to audio parameter");
-        param.addInt(String8("AWB"), true );
     }
 
     key = String8(AudioParameter::keyRouting);
@@ -931,7 +955,7 @@ status_t AudioHardwareALSA::doRouting(int device)
     if(device)
         mALSADevice->mCurDevice = device;
     if ((device == AudioSystem::DEVICE_IN_VOICE_CALL)
-#ifdef QCOM_FM_ENABLED
+#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
         || (device == AudioSystem::DEVICE_IN_FM_RX)
         || (device == AudioSystem::DEVICE_IN_FM_RX_A2DP)
 #endif
@@ -1209,7 +1233,7 @@ AudioHardwareALSA::openOutputStream(uint32_t devices,
             it != mDeviceList.end(); ++it) {
                 if((!strcmp(it->useCase, SND_USE_CASE_VERB_IP_VOICECALL)) ||
                    (!strcmp(it->useCase, SND_USE_CASE_MOD_PLAY_VOIP))) {
-                    ALOGD("openOutput:  it->rxHandle %d it->handle %d",it->rxHandle,it->handle);
+                    ALOGD("openOutput:  it->rxHandle %p it->handle %p",it->rxHandle,it->handle);
                     voipstream_active = true;
                     break;
                 }
@@ -1728,8 +1752,22 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
                                     sizeof(alsa_handle.useCase));
                         }
                     }
+                } else if (*channels & AUDIO_CHANNEL_IN_VOICE_UPLINK) {
+                    if (mFusion3Platform) {
+                        mALSADevice->setVocRecMode(INCALL_REC_MONO);
+                        strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_VOICE,
+                                sizeof(alsa_handle.useCase));
+                    } else {
+                        if (*format == AUDIO_FORMAT_AMR_WB) {
+                            strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC_COMPRESSED,
+                                    sizeof(alsa_handle.useCase));
+                        } else {
+                            strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC,
+                                    sizeof(alsa_handle.useCase));
+                        }
+                    }
                 }
-#ifdef QCOM_FM_ENABLED
+#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
             } else if((devices == AudioSystem::DEVICE_IN_FM_RX)) {
                 strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_FM, sizeof(alsa_handle.useCase));
             } else if(devices == AudioSystem::DEVICE_IN_FM_RX_A2DP) {
@@ -1782,7 +1820,7 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
                         }
                     }
                 }
-#ifdef QCOM_FM_ENABLED
+#if defined(QCOM_FM_ENABLED) || defined(STE_FM)
             } else if(devices == AudioSystem::DEVICE_IN_FM_RX) {
                 strlcpy(alsa_handle.useCase, SND_USE_CASE_VERB_FM_REC, sizeof(alsa_handle.useCase));
             } else if (devices == AudioSystem::DEVICE_IN_FM_RX_A2DP) {
@@ -1837,14 +1875,29 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
             }
 #endif
         }
+#ifdef QCOM_USBAUDIO_ENABLED
+        if((devices == AudioSystem::DEVICE_IN_COMMUNICATION) &&
+           ((mCurDevice == AudioSystem::DEVICE_OUT_ANLG_DOCK_HEADSET)||
+           (mCurDevice ==  AudioSystem::DEVICE_OUT_DGTL_DOCK_HEADSET))){
+               ALOGD("Starting recording in openInputstream, musbRecordingState: %d", musbRecordingState);
+               startUsbRecordingIfNotStarted();
+               musbRecordingState |= USBRECBIT_VOIPCALL;
+        }
+#endif
         if(sampleRate) {
             it->sampleRate = *sampleRate;
         }
+#ifdef CAF_LEGACY_INPUT_BUFFER_SIZE
+	if (6 == it->channels) {
+#endif
         if (!strncmp(it->useCase, SND_USE_CASE_VERB_HIFI_REC, strlen(SND_USE_CASE_VERB_HIFI_REC))
             || !strncmp(it->useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC, strlen(SND_USE_CASE_MOD_CAPTURE_MUSIC))) {
             ALOGV("OpenInoutStream: getInputBufferSize sampleRate:%d format:%d, channels:%d", it->sampleRate,*format,it->channels);
             it->bufferSize = getInputBufferSize(it->sampleRate,*format,it->channels);
         }
+#ifdef CAF_LEGACY_INPUT_BUFFER_SIZE
+	}
+#endif
 
 #ifdef QCOM_SSR_ENABLED
         if (6 == it->channels) {
@@ -2246,7 +2299,7 @@ bool AudioHardwareALSA::routeVoiceCall(int device, int newMode)
                     alsa_handle_t *handle = (alsa_handle_t *)(&(*vt_it));
                     mCSCallActive = CS_ACTIVE;
 
-#ifdef QCOM_CSDCLIENT_ENABLED
+#if defined(QCOM_CSDCLIENT_ENABLED) && defined(NEW_CSDCLIENT)
                     if (mFusion3Platform) {
                         if (csd_resume_voice == NULL)
                             ALOGE("csd_client_resume_voice is NULL");
@@ -2280,7 +2333,7 @@ bool AudioHardwareALSA::routeVoiceCall(int device, int newMode)
                          strlen(SND_USE_CASE_MOD_PLAY_VOICE)))) {
                          mCSCallActive = CS_HOLD;
                          alsa_handle_t *handle = (alsa_handle_t *)(&(*vt_it));
-#ifdef QCOM_CSDCLIENT_ENABLED
+#if defined(QCOM_CSDCLIENT_ENABLED) && defined(NEW_CSDCLIENT)
                          if (mFusion3Platform) {
                              if (csd_standby_voice == NULL)
                                  ALOGE("csd_standby_voice is NULL");
@@ -2352,7 +2405,7 @@ bool AudioHardwareALSA::routeVoice2Call(int device, int newMode)
                      strlen(SND_USE_CASE_MOD_PLAY_VOICE2)))) {
                      alsa_handle_t *handle = (alsa_handle_t *)(&(*vt_it));
                      mVoice2CallActive = CS_ACTIVE_SESSION2;
-#ifdef QCOM_CSDCLIENT_ENABLED
+#if defined(QCOM_CSDCLIENT_ENABLED) && defined(NEW_CSDCLIENT)
                      if (mFusion3Platform) {
                          if (csd_resume_voice == NULL)
                              ALOGE("csd_client_resume_voice is NULL");
@@ -2387,7 +2440,7 @@ bool AudioHardwareALSA::routeVoice2Call(int device, int newMode)
                          strlen(SND_USE_CASE_MOD_PLAY_VOICE2)))) {
                          mCSCallActive = CS_HOLD_SESSION2;
                          alsa_handle_t *handle = (alsa_handle_t *)(&(*vt_it));
-#ifdef QCOM_CSDCLIENT_ENABLED
+#if defined(QCOM_CSDCLIENT_ENABLED) && defined(NEW_CSDCLIENT)
                          if (mFusion3Platform) {
                              if (csd_standby_voice == NULL)
                                  ALOGE("csd_standby_voice is NULL");
@@ -2460,7 +2513,7 @@ bool AudioHardwareALSA::routeVoLTECall(int device, int newMode)
                      strlen(SND_USE_CASE_MOD_PLAY_VOLTE)))) {
                      alsa_handle_t *handle = (alsa_handle_t *)(&(*vt_it));
                      mVolteCallActive = IMS_ACTIVE;
-#ifdef QCOM_CSDCLIENT_ENABLED
+#if defined(QCOM_CSDCLIENT_ENABLED) && defined(NEW_CSDCLIENT)
                      if (mFusion3Platform) {
                          if (csd_resume_voice == NULL)
                              ALOGE("csd_client_resume_voice is NULL");
@@ -2493,7 +2546,7 @@ bool AudioHardwareALSA::routeVoLTECall(int device, int newMode)
                          strlen(SND_USE_CASE_MOD_PLAY_VOLTE)))) {
                           mVolteCallActive = IMS_HOLD;
                          alsa_handle_t *handle = (alsa_handle_t *)(&(*vt_it));
-#ifdef QCOM_CSDCLIENT_ENABLED
+#if defined(QCOM_CSDCLIENT_ENABLED) && defined(NEW_CSDCLIENT)
                          if (mFusion3Platform) {
                              if (csd_standby_voice == NULL)
                                  ALOGE("csd_standby_voice is NULL");
@@ -2904,7 +2957,7 @@ void AudioHardwareALSA::extOutThreadFunc() {
     uint32_t bytesAvailInBuffer = 0;
     uint32_t proxyBufferTime = 0;
     void  *data;
-    status_t err = NO_ERROR;
+    int err = NO_ERROR;
     ssize_t size = 0;
     void * outbuffer= malloc(AFE_PROXY_PERIOD_SIZE);
 
@@ -2934,15 +2987,10 @@ void AudioHardwareALSA::extOutThreadFunc() {
             }
         }
         err = mALSADevice->readFromProxy(&data, &size);
-        if(err == (status_t) FAILED_TRANSACTION) {
-            ALOGE("readFromProxy returned an error, mostly a flush or an under run continuing");
-            err = NO_ERROR;
-            continue;
-        }
-        if(err < 0) {
-           ALOGE("ALSADevice readFromProxy returned err = %d,data = %p,\
+        if (err < 0) {
+            ALOGE("ALSADevice readFromProxy returned err = %d,data = %p,\
                     size = %ld", err, data, size);
-           continue;
+            continue;
         }
 
 #ifdef OUTPUT_BUFFER_LOG
@@ -3007,19 +3055,19 @@ void AudioHardwareALSA::extOutThreadFunc() {
 void AudioHardwareALSA::setExtOutActiveUseCases_l(uint32_t activeUsecase)
 {
    mExtOutActiveUseCases |= activeUsecase;
-   ALOGD("mExtOutActiveUseCases = %u, activeUsecase = %u", mExtOutActiveUseCases, activeUsecase);
+   ALOGV("mExtOutActiveUseCases = %u, activeUsecase = %u", mExtOutActiveUseCases, activeUsecase);
 }
 
 uint32_t AudioHardwareALSA::getExtOutActiveUseCases_l()
 {
-   ALOGD("getExtOutActiveUseCases_l: mExtOutActiveUseCases = %u", mExtOutActiveUseCases);
+   ALOGV("getExtOutActiveUseCases_l: mExtOutActiveUseCases = %u", mExtOutActiveUseCases);
    return mExtOutActiveUseCases;
 }
 
 void AudioHardwareALSA::clearExtOutActiveUseCases_l(uint32_t activeUsecase) {
 
    mExtOutActiveUseCases &= ~activeUsecase;
-   ALOGD("clear - mExtOutActiveUseCases = %u, activeUsecase = %u", mExtOutActiveUseCases, activeUsecase);
+   ALOGV("clear - mExtOutActiveUseCases = %u, activeUsecase = %u", mExtOutActiveUseCases, activeUsecase);
 
 }
 

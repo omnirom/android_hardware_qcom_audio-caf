@@ -29,8 +29,7 @@
 #include <math.h>
 
 #define LOG_TAG "AudioSessionOutALSA"
-#define LOG_NDEBUG 0
-#define LOG_NDDEBUG 0
+//#define LOG_NDEBUG 0
 #include <utils/Log.h>
 #include <utils/String8.h>
 
@@ -60,7 +59,10 @@ namespace android_audio_legacy
 #define NUM_FDS 2
 #define KILL_EVENT_THREAD 1
 #define BUFFER_COUNT 4
-#define LPA_BUFFER_SIZE 256*1024
+#ifndef LPA_DEFAULT_BUFFER_SIZE
+#define LPA_DEFAULT_BUFFER_SIZE 256
+#endif
+#define LPA_BUFFER_SIZE LPA_DEFAULT_BUFFER_SIZE*1024
 #define TUNNEL_BUFFER_SIZE 240*1024
 #define TUNNEL_METADATA_SIZE 64
 #define MONO_CHANNEL_MODE 1
@@ -305,7 +307,12 @@ ssize_t AudioSessionOutALSA::write(const void *buffer, size_t bytes)
         mSkipWrite = false;
         ALOGD("mSkipWrite is false now write bytes %d", bytes);
         ALOGD("skipping buffer in write");
-        return 0;
+
+        /* returning the bytes itself as we are skipping write.
+         * This is considered as successfull write.
+         * Skipping write could be because of a flush.
+         */
+        return bytes;
     }
 
     ALOGV("not skipping buffer in write since mSkipWrite = %d, "
@@ -319,7 +326,7 @@ ssize_t AudioSessionOutALSA::write(const void *buffer, size_t bytes)
     updateMetaData(bytes);
 
     memcpy(buf.memBuf, &mOutputMetadataTunnel, mOutputMetadataLength);
-    ALOGD("buf.memBuf  =%x , Copy Metadata = %d,  bytes = %d", buf.memBuf,mOutputMetadataLength, bytes);
+    ALOGV("buf.memBuf  =%x , Copy Metadata = %d,  bytes = %d", buf.memBuf,mOutputMetadataLength, bytes);
 
     if (bytes == 0) {
         buf.bytesToWrite = 0;
@@ -338,6 +345,7 @@ ssize_t AudioSessionOutALSA::write(const void *buffer, size_t bytes)
             if (mFilledQueue.empty()) {
                 mFilledQueue.push_back(buf);
             }
+            return bytes;
         }
 
         return err;
@@ -364,9 +372,15 @@ ssize_t AudioSessionOutALSA::write(const void *buffer, size_t bytes)
         if (!mTunnelMode) mReachedEOS = true;
     }
     int32_t * Buf = (int32_t *) buf.memBuf;
-    ALOGD(" buf.memBuf [0] = %x , buf.memBuf [1] = %x",  Buf[0], Buf[1]);
+    ALOGV(" buf.memBuf [0] = %x , buf.memBuf [1] = %x",  Buf[0], Buf[1]);
     mFilledQueue.push_back(buf);
-    return err;
+    if(!err) {
+       //return the bytes written to HAL if write is successful.
+       return bytes;
+    } else {
+       //else condition return err value returned
+       return err;
+    }
 }
 
 void AudioSessionOutALSA::bufferAlloc(alsa_handle_t *handle) {
@@ -717,11 +731,12 @@ status_t AudioSessionOutALSA::stop()
 
 status_t AudioSessionOutALSA::standby()
 {
-    Mutex::Autolock autoLock(mParent->mLock);
     // At this point, all the buffers with the driver should be
     // flushed.
     status_t err = NO_ERROR;
     flush();
+    Mutex::Autolock autoLock(mParent->mLock);
+
     mAlsaHandle->module->standby(mAlsaHandle);
     if (mParent->mRouteAudioToExtOut) {
          ALOGD("Standby - stopPlaybackOnExtOut_l - mUseCase = %d",mUseCase);
@@ -938,7 +953,7 @@ status_t AudioSessionOutALSA::setParameters(const String8& keyValuePairs)
         }
         param.remove(key);
     }
-    key = String8(AudioParameter::keyADSPStatus);
+    key = String8(AUDIO_PARAMETER_KEY_ADSP_STATUS);
     if (param.get(key, value) == NO_ERROR) {
        if (value == "ONLINE"){
            mReachedEOS = true;
@@ -1020,7 +1035,7 @@ void AudioSessionOutALSA::updateMetaData(size_t bytes) {
     mOutputMetadataTunnel.metadataLength = sizeof(mOutputMetadataTunnel);
     mOutputMetadataTunnel.timestamp = 0;
     mOutputMetadataTunnel.bufferLength =  bytes;
-    ALOGD("bytes = %d , mAlsaHandle->handle->period_size = %d, metadata = %d ",
+    ALOGV("bytes = %d , mAlsaHandle->handle->period_size = %d, metadata = %d ",
             mOutputMetadataTunnel.bufferLength, mAlsaHandle->handle->period_size, mOutputMetadataTunnel.metadataLength);
 }
 

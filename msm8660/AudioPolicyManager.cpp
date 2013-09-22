@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "AudioPolicyManagerALSA"
+#define LOG_TAG "AudioPolicyManager"
 //#define LOG_NDEBUG 0
 //#define LOG_NDDEBUG 0
 
@@ -35,7 +35,7 @@
 
 #include <utils/Log.h>
 
-#include "AudioPolicyManagerALSA.h"
+#include "AudioPolicyManager.h"
 #include <hardware/audio_effect.h>
 #include <hardware/audio.h>
 #include <hardware_legacy/audio_policy_conf.h>
@@ -47,7 +47,7 @@
 namespace android_audio_legacy {
 
 // ----------------------------------------------------------------------------
-// AudioPolicyManagerALSA
+// AudioPolicyManager
 // ----------------------------------------------------------------------------
 
 AudioParameter param;
@@ -1421,8 +1421,7 @@ audio_devices_t AudioPolicyManager::getNewDevice(audio_io_handle_t output, bool 
     } else if (isInCall() ||
                     outputDesc->isStrategyActive(STRATEGY_PHONE)) {
         device = getDeviceForStrategy(STRATEGY_PHONE, fromCache);
-    } else if (outputDesc->isUsedByStrategy(STRATEGY_SONIFICATION)||
-                (primaryOutputDesc->isUsedByStrategy(STRATEGY_SONIFICATION)&& !primaryOutputDesc->strategyRefCount(STRATEGY_MEDIA))){
+    } else if (outputDesc->isStrategyActive(STRATEGY_SONIFICATION)) {
         device = getDeviceForStrategy(STRATEGY_SONIFICATION, fromCache);
     } else if (outputDesc->isStrategyActive(STRATEGY_SONIFICATION_RESPECTFUL)) {
         device = getDeviceForStrategy(STRATEGY_SONIFICATION_RESPECTFUL, fromCache);
@@ -1636,7 +1635,7 @@ audio_devices_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strate
         uint32_t device2 = AUDIO_DEVICE_NONE;
         if (mForceUse[AudioSystem::FOR_MEDIA] != AudioSystem::FORCE_SPEAKER) {
             if (strategy != STRATEGY_SONIFICATION) {
-#ifdef QCOM_WFD_ENABLED
+#ifdef QCOM_PROXY_DEVICE_ENABLED
                 // no sonification on WFD sink
                 device2 = mAvailableOutputDevices & AUDIO_DEVICE_OUT_PROXY;
 #else
@@ -1764,10 +1763,12 @@ uint32_t AudioPolicyManager::setOutputDevice(audio_io_handle_t output,
 
     // Do not change the routing if:
     //  - the requested device is AUDIO_DEVICE_NONE
-    //  - the requested device is the same as current device and force is not specified.
+    // if the requested device is the same as current device, allow routing as current outputDesc
+    // might not be updated with current active device always. In such cases if device stored in
+    // outputDesc is same as newDevice it will still not allow routing from current device.
     // Doing this check here allows the caller to call setOutputDevice() without conditions
-    if ((device == AUDIO_DEVICE_NONE) || ((device == prevDevice) && !force)) {
-        ALOGV("setOutputDevice() setting same device %04x or null device for output %d", device, output);
+    if (device == AUDIO_DEVICE_NONE) {
+        ALOGV("setOutputDevice() setting null device for output %d", output);
         return muteWaitMs;
     }
     if (device == prevDevice) {
@@ -1975,7 +1976,7 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream,
             fmVolume = computeVolume(stream, index, output, device);
             if (fmVolume >= 0) {
                 if(output == mPrimaryOutput)
-                    mpClientInterface->setFmVolume(fmVolume, delayMs*2);
+                    mpClientInterface->setFmVolume(fmVolume, delayMs);
                 else if(mHasA2dp && output == getA2dpOutput())
                     mpClientInterface->setStreamVolume((AudioSystem::stream_type)stream, volume, output, delayMs);
             }

@@ -36,8 +36,10 @@
 
 extern "C" {
     #include <sound/asound.h>
+#ifdef QCOM_COMPRESSED_AUDIO_ENABLED
     #include <sound/compress_params.h>
     #include <sound/compress_offload.h>
+#endif
     #include "alsa_audio.h"
     #include "msm8960_use_cases.h"
 }
@@ -166,7 +168,6 @@ static int USBRECBIT_FM = (1 << 3);
 #define AFE_PROXY_SAMPLE_RATE 48000
 #define AFE_PROXY_CHANNEL_COUNT 2
 #define AFE_PROXY_PERIOD_SIZE 3072
-#define AFE_PROXY_HIGH_WATER_MARK_FRAME_COUNT 40000
 
 #define MAX_SLEEP_RETRY 100  /*  Will check 100 times before continuing */
 #define AUDIO_INIT_SLEEP_WAIT 50 /* 50 ms */
@@ -221,6 +222,13 @@ enum {
     INCALL_REC_STEREO,
 };
 
+/* ADSP States */
+enum {
+    ADSP_UP = 0x0,
+    ADSP_DOWN = 0x1,
+    ADSP_UP_AFTER_SSR = 0x2,
+};
+
 enum audio_call_mode {
     CS_INACTIVE   = 0x0,
     CS_ACTIVE     = 0x1,
@@ -232,6 +240,30 @@ enum audio_call_mode {
     IMS_ACTIVE    = 0x10,
     IMS_HOLD      = 0x20
 };
+
+
+//Audio parameter definitions
+
+/* Query handle fm parameter*/
+#define AUDIO_PARAMETER_KEY_HANDLE_FM "handle_fm"
+
+/* Query voip flag */
+#define AUDIO_PARAMETER_KEY_VOIP_CHECK "voip_flag"
+
+/* Query Fluence type */
+#define AUDIO_PARAMETER_KEY_FLUENCE_TYPE "fluence"
+
+/* Query if surround sound recording is supported */
+#define AUDIO_PARAMETER_KEY_SSR "ssr"
+
+/* Query if a2dp  is supported */
+#define AUDIO_PARAMETER_KEY_HANDLE_A2DP_DEVICE "isA2dpDeviceSupported"
+
+/* Query ADSP Status */
+#define AUDIO_PARAMETER_KEY_ADSP_STATUS "ADSP_STATUS"
+
+/* Query if Proxy can be Opend */
+#define AUDIO_CAN_OPEN_PROXY "can_open_proxy"
 
 class AudioSessionOutALSA;
 struct alsa_handle_t {
@@ -317,6 +349,7 @@ public:
     void     setACDBHandle(void*);
 #endif
 
+    int mADSPState;
     bool mSSRComplete;
     int mCurDevice;
     long mAvailInMs;
@@ -368,7 +401,7 @@ private:
     bool mIsSglte;
     bool mIsFmEnabled;
 #ifdef SEPERATED_AUDIO_INPUT
-    int mInput_source
+    int mInputSource;
 #endif
 //   ALSAHandleList  *mDeviceList;
 
@@ -392,6 +425,14 @@ private:
         long mBufferTime;
     };
     struct proxy_params mProxyParams;
+
+#ifdef USE_A2220
+    int mA2220Fd;
+    int mA2220Mode;
+    Mutex mA2220Lock;
+
+    int setA2220Mode(int mode);
+#endif
 
 };
 

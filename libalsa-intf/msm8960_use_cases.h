@@ -175,6 +175,7 @@ struct snd_use_case_mgr {
     card_ctxt_t *card_ctxt_ptr;
     pthread_t thr;
     bool isFusion3Platform;
+    void *acdb_handle;
 };
 
 #define MAX_NUM_CARDS (sizeof(card_list)/sizeof(char *))
@@ -296,7 +297,9 @@ static card_mapping_t card_mapping_list[] = {
 #define SND_USE_CASE_DEV_PROXY_RX_SPEAKER_ANC_HEADSET "PROXY Rx Speaker ANC Headset"
 #define SND_USE_CASE_DEV_CAMCORDER_TX       "Camcorder Tx"
 #define SND_USE_CASE_DEV_VOICE_RECOGNITION  "Voice Recognition"
+#define SND_USE_CASE_DEV_VOICE_RECOGNITION_HEADSET  "Voice Recognition Headset"
 #define SND_USE_CASE_DEV_VOC_EARPIECE       "Voice Earpiece"
+#define SND_USE_CASE_DEV_VOC_EARPIECE_XGAIN "Voice Earpiece Extra Gain"
 #define SND_USE_CASE_DEV_VOC_HEADPHONE      "Voice Headphones"
 #define SND_USE_CASE_DEV_VOC_HEADSET        "Voice Headset"
 #define SND_USE_CASE_DEV_VOC_ANC_HEADSET    "Voice ANC Headset"
@@ -304,6 +307,12 @@ static card_mapping_t card_mapping_list[] = {
 #define SND_USE_CASE_DEV_VOC_LINE           "Voice Line"
 #define SND_USE_CASE_DEV_AANC_LINE          "AANC Line"
 #define SND_USE_CASE_DEV_AANC_DMIC_ENDFIRE  "AANC DMIC Endfire"
+#define SND_USE_CASE_DEV_VOIP_EARPIECE      "VOIP Earpiece"
+#define SND_USE_CASE_DEV_VOIP_HEADPHONE     "VOIP Headphones"
+#define SND_USE_CASE_DEV_VOIP_HEADSET       "VOIP Headset"
+#define SND_USE_CASE_DEV_VOIP_SPEAKER       "VOIP Speaker"
+#define SND_USE_CASE_DEV_VOIP_LINE          "VOIP Line"
+#define SND_USE_CASE_DEV_VOIP_HANDSET       "VOIP Handset"
 
 #define SND_USE_CASE_MOD_PLAY_FM         "Play FM"
 #define SND_USE_CASE_MOD_CAPTURE_FM      "Capture FM"
