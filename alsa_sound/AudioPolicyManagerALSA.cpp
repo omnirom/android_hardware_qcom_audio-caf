@@ -1421,8 +1421,7 @@ audio_devices_t AudioPolicyManager::getNewDevice(audio_io_handle_t output, bool 
     } else if (isInCall() ||
                     outputDesc->isStrategyActive(STRATEGY_PHONE)) {
         device = getDeviceForStrategy(STRATEGY_PHONE, fromCache);
-    } else if (outputDesc->isUsedByStrategy(STRATEGY_SONIFICATION)||
-                (primaryOutputDesc->isUsedByStrategy(STRATEGY_SONIFICATION)&& !primaryOutputDesc->strategyRefCount(STRATEGY_MEDIA))){
+    } else if (outputDesc->isStrategyActive(STRATEGY_SONIFICATION)) {
         device = getDeviceForStrategy(STRATEGY_SONIFICATION, fromCache);
     } else if (outputDesc->isStrategyActive(STRATEGY_SONIFICATION_RESPECTFUL)) {
         device = getDeviceForStrategy(STRATEGY_SONIFICATION_RESPECTFUL, fromCache);
