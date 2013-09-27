@@ -314,6 +314,12 @@ static card_mapping_t card_mapping_list[] = {
 #define SND_USE_CASE_DEV_VOIP_LINE          "VOIP Line"
 #define SND_USE_CASE_DEV_VOIP_HANDSET       "VOIP Handset"
 
+#ifdef FIND5_MIC_DEVICES
+#define SND_USE_CASE_DEV_OPPO_VOC_MIC       "DUAL MIC"
+#define SND_USE_CASE_DEV_OPPO_VOC_SPEAKER_MIC   "LineFluenceV5"
+#define SND_USE_CASE_DEV_OPPO_MIC           "DMIC VOICE RECO Endfire"
+#endif
+
 #define SND_USE_CASE_MOD_PLAY_FM         "Play FM"
 #define SND_USE_CASE_MOD_CAPTURE_FM      "Capture FM"
 #define SND_USE_CASE_MOD_CAPTURE_LOWLATENCY_MUSIC     "Capture Lowlatency Music"
