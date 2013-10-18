@@ -104,6 +104,10 @@ ifeq ($(BOARD_HAVE_AUDIENCE_A2220),true)
     common_cflags += -DUSE_A2220
 endif
 
+ifeq ($(BOARD_HAVE_CSD_FAST_CALL_SWITCH),true)
+    common_cflags += -DCSD_FAST_CALL_SWITCH
+endif
+
 ifeq ($(BOARD_HAVE_NEW_QCOM_CSDCLIENT),true)
     common_cflags += -DNEW_CSDCLIENT
 endif
