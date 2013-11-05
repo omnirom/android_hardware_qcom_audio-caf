@@ -730,7 +730,8 @@ audio_io_handle_t AudioPolicyManager::getOutput(AudioSystem::stream_type stream,
                                     uint32_t samplingRate,
                                     uint32_t format,
                                     uint32_t channelMask,
-                                    AudioSystem::output_flags flags)
+                                    AudioSystem::output_flags flags,
+                                    const audio_offload_info_t *offloadInfo)
 {
     audio_io_handle_t output = 0;
     uint32_t latency = 0;
