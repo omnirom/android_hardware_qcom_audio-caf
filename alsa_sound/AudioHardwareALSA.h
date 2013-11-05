@@ -160,9 +160,6 @@ static int USBRECBIT_FM = (1 << 3);
 #endif
 
 #define MODE_CALL_KEY  "CALL_KEY"
-#ifndef ALSA_DEFAULT_SAMPLE_RATE
-#define ALSA_DEFAULT_SAMPLE_RATE 44100 // in Hz
-#endif
 
 #define NUM_FDS 2
 #define AFE_PROXY_SAMPLE_RATE 48000
@@ -973,7 +970,7 @@ protected:
     void *mCsdHandle;
 
     //fluence key value: fluencepro, fluence, or none
-    char mFluenceKey[20];
+    char mFluenceKey[PROPERTY_VALUE_MAX];
     //A2DP variables
     audio_stream_out   *mA2dpStream;
     audio_hw_device_t  *mA2dpDevice;

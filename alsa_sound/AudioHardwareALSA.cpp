@@ -378,7 +378,7 @@ AudioHardwareALSA::AudioHardwareALSA() :
     mALSADevice->setFlags(mDevSettingsFlag);
 
     //set default AudioParameters for surround sound recording
-    char ssr_enabled[6] = "false";
+    char ssr_enabled[PROPERTY_VALUE_MAX] = "false";
     property_get("ro.qc.sdk.audio.ssr",ssr_enabled,"0");
     if (!strncmp("true", ssr_enabled, 4)) {
         ALOGD("surround sound recording is supported");
@@ -1713,7 +1713,7 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
         else
             alsa_handle.format = *format;
         alsa_handle.channels = VOICE_CHANNEL_MODE;
-        alsa_handle.sampleRate = android::AudioRecord::DEFAULT_SAMPLE_RATE;
+        alsa_handle.sampleRate = 8000;
         alsa_handle.latency = RECORD_LATENCY;
         alsa_handle.rxHandle = 0;
         alsa_handle.ucMgr = mUcMgr;
