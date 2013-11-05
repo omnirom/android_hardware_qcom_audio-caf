@@ -953,6 +953,7 @@ status_t AudioSessionOutALSA::setParameters(const String8& keyValuePairs)
         }
         param.remove(key);
     }
+#ifdef QCOM_ADSP_SSR_ENABLED
     key = String8(AUDIO_PARAMETER_KEY_ADSP_STATUS);
     if (param.get(key, value) == NO_ERROR) {
        if (value == "ONLINE"){
@@ -967,9 +968,11 @@ status_t AudioSessionOutALSA::setParameters(const String8& keyValuePairs)
            mParent->mLock.unlock();
        }
     } else {
+#endif
         mParent->setParameters(keyValuePairs);
+#ifdef QCOM_ADSP_SSR_ENABLED
     }
-
+#endif
     return NO_ERROR;
 }
 

@@ -36,16 +36,10 @@
 
 #include "AudioHardwareALSA.h"
 
-#ifndef ALSA_DEFAULT_SAMPLE_RATE
-#define ALSA_DEFAULT_SAMPLE_RATE 44100 // in Hz
-#endif
-
 namespace android_audio_legacy
 {
 
 // ----------------------------------------------------------------------------
-
-static const int DEFAULT_SAMPLE_RATE = ALSA_DEFAULT_SAMPLE_RATE;
 
 // ----------------------------------------------------------------------------
 
