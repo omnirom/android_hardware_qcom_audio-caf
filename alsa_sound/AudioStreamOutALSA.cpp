@@ -132,9 +132,11 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
                 } else if (!strcmp(mHandle->useCase,SND_USE_CASE_MOD_PLAY_MUSIC)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_VERB_HIFI,
                             sizeof(SND_USE_CASE_MOD_PLAY_MUSIC));
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
                 } else if(!strcmp(mHandle->useCase, SND_USE_CASE_MOD_PLAY_LOWLATENCY_MUSIC)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_VERB_HIFI_LOWLATENCY_MUSIC,
                             sizeof(SND_USE_CASE_MOD_PLAY_LOWLATENCY_MUSIC));
+#endif
                 }
             } else {
                 if(!strcmp(mHandle->useCase, SND_USE_CASE_VERB_IP_VOICECALL)) {
@@ -146,9 +148,11 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
                 } else if (!strcmp(mHandle->useCase,SND_USE_CASE_VERB_HIFI)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_MOD_PLAY_MUSIC,
                             sizeof(SND_USE_CASE_MOD_PLAY_MUSIC));
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
                 } else if(!strcmp(mHandle->useCase, SND_USE_CASE_VERB_HIFI_LOWLATENCY_MUSIC)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_MOD_PLAY_LOWLATENCY_MUSIC,
                             sizeof(SND_USE_CASE_MOD_PLAY_LOWLATENCY_MUSIC));
+#endif
                 }
             }
             free(use_case);

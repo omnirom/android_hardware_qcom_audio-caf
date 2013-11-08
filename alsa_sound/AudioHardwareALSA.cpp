@@ -1417,6 +1417,7 @@ AudioHardwareALSA::openOutputStream(uint32_t devices,
       snd_use_case_get(mUcMgr, "_verb", (const char **)&use_case);
 
 #ifdef QCOM_OUTPUT_FLAGS_ENABLED
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
       if (flags & AUDIO_OUTPUT_FLAG_FAST) {
           alsa_handle.bufferSize = PLAYBACK_LOW_LATENCY_BUFFER_SIZE;
           alsa_handle.latency = PLAYBACK_LOW_LATENCY;
@@ -1427,6 +1428,7 @@ AudioHardwareALSA::openOutputStream(uint32_t devices,
                strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_PLAY_LOWLATENCY_MUSIC, sizeof(alsa_handle.useCase));
           }
       } else
+#endif
 #endif
       {
           if ((use_case == NULL) || (!strcmp(use_case, SND_USE_CASE_VERB_INACTIVE))) {
@@ -1774,11 +1776,14 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
                 strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_A2DP_FM, sizeof(alsa_handle.useCase));
 #endif
             } else {
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
                 char value[128];
                 property_get("persist.audio.lowlatency.rec",value,"0");
                 if (!strcmp("true", value)) {
                     strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_LOWLATENCY_MUSIC, sizeof(alsa_handle.useCase));
-                } else if (*format == AUDIO_FORMAT_AMR_WB) {
+                } else 
+#endif                
+                if (*format == AUDIO_FORMAT_AMR_WB) {
                     ALOGV("Format AMR_WB, open compressed capture");
                     strlcpy(alsa_handle.useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC_COMPRESSED, sizeof(alsa_handle.useCase));
                 } else {
@@ -1827,11 +1832,14 @@ AudioHardwareALSA::openInputStream(uint32_t devices,
                 strlcpy(alsa_handle.useCase, SND_USE_CASE_VERB_FM_A2DP_REC, sizeof(alsa_handle.useCase));
 #endif
             } else {
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
                 char value[128];
                 property_get("persist.audio.lowlatency.rec",value,"0");
                 if (!strcmp("true", value)) {
                     strlcpy(alsa_handle.useCase, SND_USE_CASE_VERB_HIFI_LOWLATENCY_REC, sizeof(alsa_handle.useCase));
-                } else if (*format == AUDIO_FORMAT_AMR_WB) {
+                } else 
+#endif
+                if (*format == AUDIO_FORMAT_AMR_WB) {
                     strlcpy(alsa_handle.useCase, SND_USE_CASE_VERB_HIFI_REC_COMPRESSED, sizeof(alsa_handle.useCase));
                 } else {
                     strlcpy(alsa_handle.useCase, SND_USE_CASE_VERB_HIFI_REC, sizeof(alsa_handle.useCase));
