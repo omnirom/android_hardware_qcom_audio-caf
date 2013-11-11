@@ -227,11 +227,14 @@ ssize_t AudioStreamInALSA::read(void *buffer, ssize_t bytes)
             } else if(!strcmp(mHandle->useCase, SND_USE_CASE_MOD_PLAY_VOIP)) {
                 strlcpy(mHandle->useCase, SND_USE_CASE_MOD_PLAY_VOIP, sizeof(mHandle->useCase));
             } else {
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
                 char value[128];
                 property_get("persist.audio.lowlatency.rec",value,"0");
                 if (!strcmp("true", value)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_MOD_CAPTURE_LOWLATENCY_MUSIC, sizeof(mHandle->useCase));
-                } else if(!strcmp(mHandle->useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC_COMPRESSED)) {
+                } else 
+#endif
+                if(!strcmp(mHandle->useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC_COMPRESSED)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC_COMPRESSED, sizeof(mHandle->useCase));
                 } else {
                     strlcpy(mHandle->useCase, SND_USE_CASE_MOD_CAPTURE_MUSIC, sizeof(mHandle->useCase));
@@ -310,11 +313,14 @@ ssize_t AudioStreamInALSA::read(void *buffer, ssize_t bytes)
             } else if(!strcmp(mHandle->useCase, SND_USE_CASE_VERB_HIFI_REC_COMPRESSED)){
                 strlcpy(mHandle->useCase, SND_USE_CASE_VERB_HIFI_REC_COMPRESSED, sizeof(mHandle->useCase));
             } else {
+#ifdef QCOM_LOW_LATENCY_AUDIO_ENABLED
                 char value[128];
                 property_get("persist.audio.lowlatency.rec",value,"0");
                 if (!strcmp("true", value)) {
                     strlcpy(mHandle->useCase, SND_USE_CASE_VERB_HIFI_LOWLATENCY_REC, sizeof(mHandle->useCase));
-                } else {
+                } else 
+#endif
+                {
                     strlcpy(mHandle->useCase, SND_USE_CASE_VERB_HIFI_REC, sizeof(mHandle->useCase));
                 }
             }

@@ -47,6 +47,9 @@ endif
 ifneq ($(strip $(QCOM_TUNNEL_LPA_ENABLED)),false)
     common_cflags += -DQCOM_TUNNEL_LPA_ENABLED
 endif
+ifneq ($(strip $(BOARD_HAVE_LOW_LATENCY_AUDIO)),false)
+    common_cflags += -DQCOM_LOW_LATENCY_AUDIO_ENABLED
+endif
 
 ifeq ($(call is-board-platform,msm8974),true)
     common_cflags += -DTARGET_8974
