@@ -100,8 +100,8 @@ static uint32_t DEVICE_HEADSET_TX = 5; //headset_mono_tx
 static uint32_t DEVICE_FMRADIO_HANDSET_RX= 6; //fmradio_handset_rx
 static uint32_t DEVICE_FMRADIO_HEADSET_RX= 7; //fmradio_headset_rx
 static uint32_t DEVICE_FMRADIO_SPEAKER_RX= 8; //fmradio_speaker_rx
-static uint32_t DEVICE_DUALMIC_HANDSET_TX = 9; //handset_dual_mic_broadside_tx/handset_dual_mic_endfire_tx
-static uint32_t DEVICE_DUALMIC_SPEAKER_TX = 10; //speaker_dual_mic_broadside_tx/speaker_dual_mic_endfire_tx
+static uint32_t DEVICE_DUALMIC_HANDSET_TX = 9; //handset_dual_mic_broadside_tx/handset_dual_mic_endfire_tx/handset_dual_mic_endfire_tx_real_stereo
+static uint32_t DEVICE_DUALMIC_SPEAKER_TX = 10; //speaker_dual_mic_broadside_tx/speaker_dual_mic_endfire_tx/speaker_dual_mic_endfire_tx_real_stereo
 static uint32_t DEVICE_TTY_HEADSET_MONO_RX = 11; //tty_headset_mono_rx
 static uint32_t DEVICE_TTY_HEADSET_MONO_TX = 12; //tty_headset_mono_tx
 static uint32_t DEVICE_BT_SCO_RX = 17; //bt_sco_rx
@@ -524,6 +524,12 @@ AudioHardware::AudioHardware() :
                 index = DEVICE_FMRADIO_HEADSET_RX;
             else if(strcmp((char* )name[i],"fmradio_speaker_rx") == 0)
                 index = DEVICE_FMRADIO_SPEAKER_RX;
+#ifdef SEMC_AUDIO
+            else if(strcmp((char* )name[i],"handset_dual_mic_endfire_tx_real_stereo") == 0)
+                index = DEVICE_DUALMIC_HANDSET_TX;
+            else if(strcmp((char* )name[i],"speaker_dual_mic_endfire_tx_real_stereo") == 0)
+                index = DEVICE_DUALMIC_SPEAKER_TX;
+#else
             else if(strcmp((char* )name[i],"handset_dual_mic_broadside_tx") == 0)
                 index = DEVICE_DUALMIC_HANDSET_TX;
             else if(strcmp((char* )name[i],"handset_dual_mic_endfire_tx") == 0)
@@ -532,6 +538,7 @@ AudioHardware::AudioHardware() :
                 index = DEVICE_DUALMIC_SPEAKER_TX;
             else if(strcmp((char* )name[i],"speaker_dual_mic_endfire_tx") == 0)
                 index = DEVICE_DUALMIC_SPEAKER_TX;
+#endif
             else if(strcmp((char* )name[i],"tty_headset_mono_rx") == 0)
                 index = DEVICE_TTY_HEADSET_MONO_RX;
             else if(strcmp((char* )name[i],"tty_headset_mono_tx") == 0)
@@ -1285,6 +1292,16 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input, uint32_t outputDe
             if (inputDevice == AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET) {
                 ALOGI("Routing audio to Bluetooth PCM\n");
                 sndDevice = SND_DEVICE_BT;
+#ifdef SEMC_AUDIO
+            } else if (inputDevice & AUDIO_DEVICE_IN_BACK_MIC) {
+                if (outputDevices & AUDIO_DEVICE_OUT_EARPIECE) {
+                    ALOGI("Routing audio to handset with DualMike enabled (camcorder)\n");
+                    sndDevice = SND_DEVICE_IN_S_SADC_OUT_HANDSET;
+                } else {
+                    ALOGI("Routing audio to speakerphone with DualMike enabled (camcorder)\n");
+                    sndDevice = SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE;
+                }
+#endif
             } else if (inputDevice == AUDIO_DEVICE_IN_WIRED_HEADSET) {
                 if ((outputDevices & AUDIO_DEVICE_OUT_WIRED_HEADSET) &&
                     (outputDevices & AUDIO_DEVICE_OUT_SPEAKER)) {
