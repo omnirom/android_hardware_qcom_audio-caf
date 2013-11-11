@@ -236,11 +236,11 @@ AudioHardwareALSA::AudioHardwareALSA() :
     sleep_retry = 0;
     while (audio_init_done == false && sleep_retry < MAX_SLEEP_RETRY) {
         property_get("qcom.audio.init", audio_init, NULL);
-        ALOGD("qcom.audio.init is set to %s\n",audio_init);
+        ALOGV("qcom.audio.init is set to %s\n",audio_init);
         if(!strncmp(audio_init, "complete", sizeof("complete"))) {
             audio_init_done = true;
         } else {
-            ALOGD("Sleeping for 50 ms");
+            ALOGV("Sleeping for 50 ms");
             usleep(AUDIO_INIT_SLEEP_WAIT*1000);
             sleep_retry++;
         }
