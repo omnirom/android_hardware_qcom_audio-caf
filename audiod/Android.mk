@@ -1,7 +1,7 @@
-ifeq ($(strip $(QCOM_AUDIOD_ENABLED)),true)
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
+include external/stlport/libstlport.mk
 
 LOCAL_SRC_FILES:= \
 	audiod_main.cpp \
@@ -14,6 +14,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libutils \
 	libbinder \
 	libmedia \
+	libstlport
 
 LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
@@ -21,4 +22,3 @@ LOCAL_MODULE:= audiod
 LOCAL_MODULE_TAGS:= debug
 
 include $(BUILD_EXECUTABLE)
-endif

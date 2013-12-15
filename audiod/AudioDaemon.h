@@ -1,6 +1,6 @@
 /* AudioDaemon.h
 
-Copyright (c) 2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -32,12 +32,15 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <vector>
+
+#include <utils/threads.h>
+#include <utils/String8.h>
+
 
 namespace android {
 
-enum adsp_status { adsp_online, adsp_offline};
-
-enum uevent_action { action_online, action_offline };
+enum snd_card_status { snd_card_online, snd_card_offline};
 
 class AudioDaemon:public Thread, public IBinder :: DeathRecipient
 {
@@ -48,12 +51,17 @@ class AudioDaemon:public Thread, public IBinder :: DeathRecipient
     virtual void        binderDied(const wp < IBinder > &who);
 
     bool processUeventMessage();
-    void notifyAudioSystem(adsp_status status);
+    void notifyAudioSystem(int snd_card, snd_card_status status);
     int mUeventSock;
+    bool getStateFDs(std::vector<std::pair<int,int> > &sndcardFdPair);
+    void putStateFDs(std::vector<std::pair<int,int> > &sndcardFdPair);
 
 public:
     AudioDaemon();
     virtual ~AudioDaemon();
+
+private:
+    std::vector<std::pair<int,int> > mSndCardFd;
 };
 
 }
