@@ -218,10 +218,17 @@ static int USBRECBIT_FM = (1 << 3);
 #define SOUND_CARD_SLEEP_RETRY 5  /*  Will check 5 times before continuing */
 #define SOUND_CARD_SLEEP_WAIT 100 /* 100 ms */
 
+#ifdef OPPO_CSDCLIENT
+#define VOICE_SESSION_VSID   0x01
+#define VOLTE_SESSION_VSID   0x02
+#define VOICE2_SESSION_VSID  0x03
+#define ALL_SESSION_VSID     0x04
+#else
 #define VOICE_SESSION_VSID  0x10C01000
 #define VOICE2_SESSION_VSID 0x10DC1000
 #define VOLTE_SESSION_VSID  0x10C02000
 #define ALL_SESSION_VSID    0xFFFFFFFF
+#endif
 
 static uint32_t FLUENCE_MODE_ENDFIRE   = 0;
 static uint32_t FLUENCE_MODE_BROADSIDE = 1;
