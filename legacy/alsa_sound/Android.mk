@@ -133,6 +133,10 @@ ifeq ($(BOARD_HAVE_HTC_CSDCLIENT),true)
     common_cflags += -DHTC_CSDCLIENT
 endif
 
+ifeq ($(BOARD_HAVE_OPPO_CSDCLIENT),true)
+    common_cflags += -DOPPO_CSDCLIENT
+endif
+
 ifneq ($(TARGET_USES_QCOM_COMPRESSED_AUDIO),false)
     common_cflags += -DQCOM_COMPRESSED_AUDIO_ENABLED
 endif
