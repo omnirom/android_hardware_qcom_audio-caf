@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b713d8b_2884f3b5",
+        "filename": "legacy/alsa_sound/ALSADevice.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1908,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-07-13T00:00:30Z",
+      "side": 1,
+      "message": "Better use USES_SEPERATED_VOIP to follow the naming conventions",
+      "revId": "ca3f939b909f4f679a4e45c32a9a2507fc011328",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    }
+  ]
+}
