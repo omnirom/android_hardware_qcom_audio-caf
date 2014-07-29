@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4b713d8b_91ca8b6e",
+        "filename": "legacy/alsa_sound/ALSADevice.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 1916,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-07-29T21:48:02Z",
+      "side": 1,
+      "message": "that else can be removed since its not needed",
+      "revId": "a8b591e800fccece03ca889db9f2027ea64f49a8",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4b713d8b_b1a307af",
+        "filename": "legacy/alsa_sound/ALSADevice.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 2027,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-07-29T21:48:02Z",
+      "side": 1,
+      "message": "That else now matches a different if :)\nand need to be removed also",
+      "revId": "a8b591e800fccece03ca889db9f2027ea64f49a8",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    }
+  ]
+}
