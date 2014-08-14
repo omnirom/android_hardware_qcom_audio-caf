@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b6ec9b0_47567e61",
+        "filename": "legacy/alsa_sound/ALSADevice.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1908,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-08-14T22:18:42Z",
+      "side": 1,
+      "message": "#ifdef SEPARATED_VOIP_SHORTCUT\n+ change in Android.mk to enable in bord config\nwhich adds the -D",
+      "revId": "1157c6cf40b72c3861e1df771c4458565b7e754e",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2b6ec9b0_67537a70",
+        "filename": "legacy/alsa_sound/ALSADevice.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2027,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-08-14T22:18:42Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 2027,
+        "startChar": 16,
+        "endLine": 2027,
+        "endChar": 30
+      },
+      "revId": "1157c6cf40b72c3861e1df771c4458565b7e754e",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    }
+  ]
+}
