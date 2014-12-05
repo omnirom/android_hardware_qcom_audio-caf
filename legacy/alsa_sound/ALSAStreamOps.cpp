@@ -213,6 +213,17 @@ status_t ALSAStreamOps::setParameters(const String8& keyValuePairs)
         param.remove(key_input);
     }
 #endif
+     String8 key_source = String8(AUDIO_PARAMETER_STREAM_INPUT_SOURCE);
+     int input=0;
+
+    if (param.getInt(key_source, input) == NO_ERROR) {
+        param.get(key_source, value);
+        AudioParameter input_param;
+        input_param.add(key_source, value);
+        ALOGD("setParameters(), input_source = %d", input);
+        mParent->setParameters(input_param.toString());
+        param.remove(key_source);
+    }
 
     if (param.getInt(key, device) == NO_ERROR) {
         // Ignore routing if device is 0.
@@ -255,7 +266,7 @@ status_t ALSAStreamOps::setParameters(const String8& keyValuePairs)
     }
 #ifdef QCOM_FM_ENABLED
     else {
-        key = String8(AudioParameter::keyHandleFm);
+        key = String8(AUDIO_PARAMETER_KEY_HANDLE_FM);
         if (param.getInt(key, device) == NO_ERROR) {
             ALOGD("setParameters(): handleFm with device %d", device);
             if(device) {

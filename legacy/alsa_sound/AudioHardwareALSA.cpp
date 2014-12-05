@@ -557,6 +557,7 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
     enum call_state  call_state = CALL_INVALID;
     uint32_t vsid = 0;
 
+    int input = 0;
     ALOGV("%s() ,%s", __func__, keyValuePairs.string());
 
 #ifdef QCOM_ADSP_SSR_ENABLED
@@ -579,6 +580,26 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
        }
     }
 #endif
+    key = String8(AUDIO_PARAMETER_STREAM_INPUT_SOURCE);
+    if (param.getInt(key, input) == NO_ERROR) {
+        ALOGV("InputSource %d", input);
+        switch (input) {
+        case AUDIO_SOURCE_VOICE_UPLINK:
+            mIncallMode = AUDIO_CHANNEL_IN_VOICE_UPLINK;
+            break;
+        case AUDIO_SOURCE_VOICE_DOWNLINK:
+             mIncallMode = AUDIO_CHANNEL_IN_VOICE_DNLINK;
+            break;
+        case AUDIO_SOURCE_VOICE_CALL:
+            mIncallMode = AUDIO_CHANNEL_IN_VOICE_UPLINK|AUDIO_CHANNEL_IN_VOICE_DNLINK;
+            break;
+        default:
+            ALOGV("%s: Source type %d doesnt match with any incall source type",
+                  __func__, input);
+        }
+        param.remove(key);
+
+    }
 
     key = String8(TTY_MODE_KEY);
     if (param.get(key, value) == NO_ERROR) {
@@ -679,6 +700,18 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
 
     key = String8(AudioParameter::keyRouting);
     if (param.getInt(key, device) == NO_ERROR) {
+        /*
+         * When HDMI cable is unplugged/usb hs is disconnected the
+         * music playback is paused and the policy manager sends routing=0
+         * But the audioflingercontinues to write data until standby time
+         * (3sec). As the HDMI core is turned off, the write gets blocked.
+         * Avoid this by routing audio to speaker until standby.
+         */
+        if ((mALSADevice->mCurDevice == AUDIO_DEVICE_OUT_AUX_DIGITAL ||
+                mALSADevice->mCurDevice == AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET) &&
+                device == AUDIO_DEVICE_NONE) {
+            device = AUDIO_DEVICE_OUT_SPEAKER;
+        }
         // Ignore routing if device is 0.
         if(device) {
             doRouting(device,NULL);
@@ -802,7 +835,7 @@ status_t AudioHardwareALSA::setParameters(const String8& keyValuePairs)
     }
 
 #ifdef QCOM_FM_ENABLED
-    key = String8(AudioParameter::keyHandleFm);
+    key = String8(AUDIO_PARAMETER_KEY_HANDLE_FM);
     if (param.getInt(key, device) == NO_ERROR) {
         // Ignore if device is 0
         if(device) {
@@ -881,7 +914,7 @@ String8 AudioHardwareALSA::getParameters(const String8& keys)
 
 #ifdef QCOM_FM_ENABLED
 
-    key = String8(AudioParameter::keyHandleA2dpDevice);
+    key = String8(AUDIO_PARAMETER_KEY_HANDLE_A2DP_DEVICE);
     if ( param.get(key,value) == NO_ERROR ) {
         param.add(key, String8("true"));
     }
@@ -931,12 +964,12 @@ String8 AudioHardwareALSA::getParameters(const String8& keys)
     if (param.getInt(key, device) == NO_ERROR) {
         param.addInt(key, mCurDevice);
     }
-
-    key = String8(AudioParameter::keyCanOpenProxy);
+#ifdef QCOM_PROXY_DEVICE_ENABLED
+    key = String8(AUDIO_CAN_OPEN_PROXY);;
     if(param.get(key, value) == NO_ERROR) {
         param.addInt(key, mCanOpenProxy);
     }
-
+#endif
     key = String8(ECHO_SUPRESSION);
     if (param.get(key, value) == NO_ERROR) {
         value = String8("yes");
@@ -1130,7 +1163,7 @@ status_t AudioHardwareALSA::doRouting(int device, char* useCase)
             //For FM we don't open an output stream. Hence required usecase shouldn't be considered.
             if ( (useCase != NULL) && (activeUsecase != USECASE_FM) ) {
                 for(ALSAHandleList::iterator it2 = mDeviceList.begin(); it2 != mDeviceList.end(); it2++) {
-                    if (!strncmp(useCase, it2->useCase,sizeof(useCase))) {
+                    if (!strcmp(useCase, it2->useCase)) {
                             it = it2;
                             ALOGV("found matching required usecase:%s device:%x",it->useCase,it->devices);
                             activeUsecase = useCaseStringToEnum(it->useCase);
@@ -1165,6 +1198,12 @@ status_t AudioHardwareALSA::doRouting(int device, char* useCase)
                             startPlaybackOnExtOut_l(activeUsecase);
                         } else {
                            mALSADevice->route(&(*it),(uint32_t)device, newMode);
+                           for(ALSAHandleList::iterator it2 = mDeviceList.begin(); it2 != mDeviceList.end(); it2++) {
+                                if ((it2->handle || it2->rxHandle) && !(getExtOutActiveUseCases_l() && it2->useCase)) {
+                                    startPlaybackOnExtOut_l(useCaseStringToEnum(it2->useCase));
+                                    break;
+                                }
+                           }
                         }
                     }
                     if (activeUsecase == USECASE_FM){
@@ -1257,6 +1296,17 @@ uint32_t AudioHardwareALSA::getVoipMode(int format)
     }
 }
 
+// default implementation calls its "without flags" counterpart
+AudioStreamOut* AudioHardwareALSA::openOutputStreamWithFlags(uint32_t devices,
+                                          audio_output_flags_t flags,
+                                          int *format,
+                                          uint32_t *channels,
+                                          uint32_t *sampleRate,
+                                          status_t *status)
+{
+    return openOutputStream(devices, format, channels, sampleRate, status);
+}
+
 AudioStreamOut *
 AudioHardwareALSA::openOutputStream(uint32_t devices,
                                     int *format,
@@ -1272,7 +1322,7 @@ AudioHardwareALSA::openOutputStream(uint32_t devices,
          devices, *channels, *sampleRate, flags);
 
     status_t err = BAD_VALUE;
-#ifdef QCOM_TUNNEL_LPA_ENABLED
+//#ifdef QCOM_TUNNEL_LPA_ENABLED
     if (flags & (AUDIO_OUTPUT_FLAG_LPA | AUDIO_OUTPUT_FLAG_TUNNEL)) {
         int type = !(flags & AUDIO_OUTPUT_FLAG_LPA); //0 for LPA, 1 for tunnel
         AudioSessionOutALSA *out = new AudioSessionOutALSA(this, devices, *format, *channels,
@@ -1286,7 +1336,7 @@ AudioHardwareALSA::openOutputStream(uint32_t devices,
         if (status) *status = err;
         return out;
     }
-#endif
+//#endif
     AudioStreamOutALSA *out = 0;
     ALSAHandleList::iterator it;
 
@@ -2824,7 +2874,7 @@ status_t AudioHardwareALSA::openA2dpOutput()
     }
     //TODO: unique id 0?
     status = mA2dpDevice->open_output_stream(mA2dpDevice, 0,((audio_devices_t)(AudioSystem::DEVICE_OUT_BLUETOOTH_A2DP)),
-                                    (audio_output_flags_t)AUDIO_OUTPUT_FLAG_NONE, &config, &mA2dpStream);
+                                    (audio_output_flags_t)AUDIO_OUTPUT_FLAG_NONE, &config, &mA2dpStream, NULL);
     if(status != NO_ERROR) {
         ALOGE("Failed to open output stream for a2dp: status %d", status);
     }
@@ -2874,7 +2924,7 @@ status_t AudioHardwareALSA::openUsbOutput()
     }
 
     status = mUsbDevice->open_output_stream(mUsbDevice, 0,((audio_devices_t)(AUDIO_DEVICE_OUT_USB_ACCESSORY)),
-                                    (audio_output_flags_t)AUDIO_OUTPUT_FLAG_NONE, &config, &mUsbStream);
+                                    (audio_output_flags_t)AUDIO_OUTPUT_FLAG_NONE, &config, &mUsbStream, NULL);
     if(status != NO_ERROR) {
         ALOGE("Failed to open output stream for USB: status %d", status);
     }

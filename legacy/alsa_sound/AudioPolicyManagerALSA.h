@@ -34,7 +34,7 @@ class AudioPolicyManager: public AudioPolicyManagerBase
 
 public:
                 AudioPolicyManager(AudioPolicyClientInterface *clientInterface)
-                : AudioPolicyManagerBase(clientInterface) {}
+                : AudioPolicyManagerBase(clientInterface) {mForceDeviceChange=false;}
 
         virtual ~AudioPolicyManager() {}
 
@@ -74,8 +74,8 @@ public:
         virtual void releaseOutput(audio_io_handle_t output);
         virtual audio_io_handle_t getInput(int inputSource,
                                             uint32_t samplingRate,
-                                            uint32_t format,
-                                            uint32_t channels,
+                                            audio_format_t format,
+                                            audio_channel_mask_t channels,
                                             AudioSystem::audio_in_acoustics acoustics);
 
         // indicates to the audio policy manager that the input starts being used.
@@ -170,9 +170,9 @@ protected:
         virtual bool a2dpUsedForSonification() const { return true; }
 
 private:
-
         void handleNotificationRoutingForStream(AudioSystem::stream_type stream);
         bool platform_is_Fusion3();
         bool isTunnelOutputEnabled();
+        bool mForceDeviceChange;
 };
 };

@@ -139,9 +139,9 @@ class AudioHardwareALSA;
 
 #define LPA_SESSION_ID 1
 #define TUNNEL_SESSION_ID 2
-#ifdef QCOM_USBAUDIO_ENABLED
 #define PROXY_OPEN_WAIT_TIME  20
 #define PROXY_OPEN_RETRY_COUNT 100
+#ifdef QCOM_USBAUDIO_ENABLED
 
 static int USBPLAYBACKBIT_MUSIC = (1 << 0);
 static int USBPLAYBACKBIT_VOICECALL = (1 << 1);
@@ -837,6 +837,15 @@ public:
             uint32_t *channels=0,
             uint32_t *sampleRate=0,
             status_t *status=0);
+
+    virtual AudioStreamOut* openOutputStreamWithFlags(
+                                uint32_t devices,
+                                audio_output_flags_t flags=(audio_output_flags_t)0,
+                                int *format=0,
+                                uint32_t *channels=0,
+                                uint32_t *sampleRate=0,
+                                status_t *status=0);
+
     virtual    void        closeOutputStream(AudioStreamOut* out);
 
     /** This method creates and opens the audio hardware input stream */
