@@ -149,6 +149,7 @@ static int USBPLAYBACKBIT_VOIPCALL = (1 << 2);
 static int USBPLAYBACKBIT_FM = (1 << 3);
 static int USBPLAYBACKBIT_LPA = (1 << 4);
 static int USBPLAYBACKBIT_TUNNEL = (1 << 5);
+static int USBPLAYBACKBIT_FAST = (1 << 6);
 
 static int USBRECBIT_REC = (1 << 0);
 static int USBRECBIT_VOICECALL = (1 << 1);
@@ -521,6 +522,8 @@ public:
     // the output has exited standby
     virtual status_t    getRenderPosition(uint32_t *dspFrames);
 
+    virtual status_t    getPresentationPosition(uint64_t *frames, struct timespec *timestamp);
+
     status_t            open(int mode);
     status_t            close();
 
@@ -589,6 +592,8 @@ public:
     // return the number of audio frames written by the audio dsp to DAC since
     // the output has exited standby
     virtual status_t    getRenderPosition(uint32_t *dspFrames);
+
+    virtual status_t    getPresentationPosition(uint64_t *frames, struct timespec *timestamp);
 
     virtual status_t    getNextWriteTimestamp(int64_t *timestamp);
 
@@ -880,7 +885,7 @@ public:
 
     void pauseIfUseCaseTunnelOrLPA();
     void resumeIfUseCaseTunnelOrLPA();
-
+    void initCodecCalib(void);
 private:
     status_t     openExtOutput(int device);
     status_t     closeExtOutput(int device);

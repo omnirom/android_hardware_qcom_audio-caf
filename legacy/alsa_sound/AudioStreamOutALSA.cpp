@@ -208,7 +208,11 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
                 } else {
                     mParent->startUsbPlaybackIfNotStarted();
                     ALOGV("enabling music, musbPlaybackState: %d ", mParent->musbPlaybackState);
-                    mParent->musbPlaybackState |= USBPLAYBACKBIT_MUSIC;
+                       if (mHandle->isFastOutput == true){
+                           mParent->musbPlaybackState |= USBPLAYBACKBIT_FAST;
+                       } else {
+                           mParent->musbPlaybackState |= USBPLAYBACKBIT_MUSIC;
+                       }
                 }
             }
 #endif
@@ -242,7 +246,11 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
             mParent->musbPlaybackState |= USBPLAYBACKBIT_VOIPCALL;
         }else{
             ALOGV("enabling music, musbPlaybackState: %d ", mParent->musbPlaybackState);
-            mParent->musbPlaybackState |= USBPLAYBACKBIT_MUSIC;
+            if (mHandle->isFastOutput == true){
+                  mParent->musbPlaybackState |= USBPLAYBACKBIT_FAST;
+            } else {
+	          mParent->musbPlaybackState |= USBPLAYBACKBIT_MUSIC;
+            }
         }
         mParent->mLock.unlock();
     }
@@ -306,7 +314,7 @@ ssize_t AudioStreamOutALSA::write(const void *buffer, size_t bytes)
         }
 
     } while ((mHandle->handle||(mHandle->rxHandle && mParent->mVoipOutStreamCount)) && sent < bytes);
-
+    mFrameCount += sent/(AudioSystem::popCount(channels())*sizeof(short));
     return sent;
 }
 
@@ -355,7 +363,12 @@ status_t AudioStreamOutALSA::close()
     }
 #ifdef QCOM_USBAUDIO_ENABLED
       else {
-        mParent->musbPlaybackState &= ~USBPLAYBACKBIT_MUSIC;
+
+        if (mHandle->isFastOutput == true){
+                mParent->musbPlaybackState &= ~USBPLAYBACKBIT_FAST;
+        } else {
+                mParent->musbPlaybackState &= ~USBPLAYBACKBIT_MUSIC;
+        }
     }
 
     mParent->closeUsbPlaybackIfNothingActive();
@@ -387,8 +400,12 @@ status_t AudioStreamOutALSA::standby()
 
 #ifdef QCOM_USBAUDIO_ENABLED
      if (mParent->musbPlaybackState) {
-        ALOGD("Deregistering MUSIC bit, musbPlaybackState: %d", mParent->musbPlaybackState);
-        mParent->musbPlaybackState &= ~USBPLAYBACKBIT_MUSIC;
+        ALOGD("Deregistering MUSIC bit, musbPlaybackState: %x", mParent->musbPlaybackState);
+        if (mHandle->isFastOutput == true) {
+                mParent->musbPlaybackState &= ~USBPLAYBACKBIT_FAST;
+        } else {
+               mParent->musbPlaybackState &= ~USBPLAYBACKBIT_MUSIC;
+        }
     }
 #endif
 
@@ -403,9 +420,6 @@ status_t AudioStreamOutALSA::standby()
 #ifdef QCOM_USBAUDIO_ENABLED
     mParent->closeUsbPlaybackIfNothingActive();
 #endif
-
-    mFrameCount = 0;
-
     return NO_ERROR;
 }
 
@@ -434,5 +448,27 @@ status_t AudioStreamOutALSA::getRenderPosition(uint32_t *dspFrames)
     *dspFrames = mFrameCount;
     return NO_ERROR;
 }
+
+status_t AudioStreamOutALSA::getPresentationPosition(uint64_t *frames, struct timespec *timestamp)
+{
+    size_t avail = 0;
+    if (mHandle->handle){
+        mHandle->handle->sync_ptr->flags = SNDRV_PCM_SYNC_PTR_APPL | SNDRV_PCM_SYNC_PTR_HWSYNC;
+        sync_ptr(mHandle->handle);
+        avail = pcm_avail(mHandle->handle);
+        size_t kernel_buffer_size =  (mHandle->handle->period_cnt * mHandle->handle->period_size)/(AudioSystem::popCount(channels())*sizeof(short));
+        int64_t signed_frames = mFrameCount - kernel_buffer_size + avail;
+        // This adjustment accounts for buffering after app processor.
+       // It is based on estimated DSP latency per use case, rather than exact.
+       signed_frames -= (latency() * mHandle->sampleRate / 1000);
+       // It would be unusual for this value to be negative, but check just in case ...
+       if (signed_frames >= 0) {
+           *frames = signed_frames;
+       }
+       clock_gettime(CLOCK_MONOTONIC, timestamp);
+    }
+    return NO_ERROR;
+}
+
 
 }       // namespace android_audio_legacy
